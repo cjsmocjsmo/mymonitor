@@ -437,7 +437,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "monitor-rs"
+name = "mymonitor"
 version = "0.1.0"
 dependencies = [
  "chrono",
