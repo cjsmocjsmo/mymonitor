@@ -7,7 +7,7 @@ use ratatui::{
 
 pub fn render(f: &mut Frame, snapshot: &MetricSnapshot, area: Rect) {
     let text = format!(
-        "Disk Read: {} B/s | Write: {} B/s",
+        "Disk Read: {} B/s\nWrite: {} B/s",
         snapshot.disk_read, snapshot.disk_write
     );
     let paragraph =

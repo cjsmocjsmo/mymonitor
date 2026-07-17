@@ -54,9 +54,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Metrics collection loop
     loop {
+        let (total_cpu_usage, core_cpu_usage) = cpu.collect();
+
         let snapshot = MetricSnapshot {
             timestamp: Local::now(),
-            cpu_usage: cpu.collect(),
+            cpu_usage: total_cpu_usage,
+            core_cpu_usage,
             total_memory: mem.collect_total(),
             used_memory: mem.collect_used(),
             disk_read: disk.collect_read(),
@@ -82,6 +85,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn launch_ui(ui_rx: Receiver<MetricSnapshot>) -> Result<(), io::Error> {
+    let hostname = sysinfo::System::host_name().unwrap_or_else(|| "unknown".to_string());
+
     enable_raw_mode()?;
     let mut stdout = io::stdout();
     crossterm::execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
@@ -98,7 +103,7 @@ fn launch_ui(ui_rx: Receiver<MetricSnapshot>) -> Result<(), io::Error> {
         }
 
         if let Ok(snapshot) = ui_rx.try_recv() {
-            terminal.draw(|f| ui::dashboard::render(f, &snapshot))?;
+            terminal.draw(|f| ui::dashboard::render(f, &snapshot, &hostname))?;
         }
     }
 
