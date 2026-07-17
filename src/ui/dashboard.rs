@@ -7,7 +7,7 @@ use ratatui::{
 use super::{cpu_widget, disk_widget, memory_widget, net_widget};
 use crate::metrics::snapshot::MetricSnapshot;
 
-pub fn render(f: &mut Frame, snapshot: &MetricSnapshot, hostname: &str) {
+pub fn render(f: &mut Frame, snapshot: &MetricSnapshot, local_ip: &str) {
     let cpu_rows = (snapshot.core_cpu_usage.len() as u16).saturating_add(3);
     let layout = Layout::default()
         .direction(Direction::Vertical)
@@ -22,7 +22,7 @@ pub fn render(f: &mut Frame, snapshot: &MetricSnapshot, hostname: &str) {
         ])
         .split(f.area());
 
-    let host_line = Paragraph::new(format!("Host: {hostname}"));
+    let host_line = Paragraph::new(format!("Local IP: {local_ip}"));
     f.render_widget(host_line, layout[0]);
 
     cpu_widget::render(f, snapshot, layout[1]);
