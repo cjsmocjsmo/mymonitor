@@ -10,3 +10,6 @@
 [ALERT] High Memory Usage triggered at 2026-07-17 10:38:55. Threshold: 70.00. Current: 70.57
 [RECOVERY] High CPU Usage recovered at 2026-07-17 10:39:20. Current: 70.51. Recover Threshold: 75.00
 [RECOVERY] High Memory Usage recovered at 2026-07-17 10:39:20. Current: 66.58. Recover Threshold: 70.00
+[ALERT] High CPU Usage triggered at 2026-07-17 10:53:13. Threshold: 85.00. Current: 89.23. Sustained Samples: 10
+[RECOVERY] High CPU Usage recovered at 2026-07-17 10:53:23. Current: 51.81. Recover Threshold: 75.00
+[ALERT] High Memory Usage triggered at 2026-07-17 10:53:32. Threshold: 70.00. Current: 71.15

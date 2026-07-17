@@ -3,23 +3,21 @@ use crossterm::event::{self, DisableMouseCapture, EnableMouseCapture, Event, Key
 use crossterm::terminal::{
     EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode,
 };
+use alerting::handler::AlertEvaluator;
 use metrics::snapshot::MetricSnapshot;
 use metrics::{
     cpu::CpuCollector, disk::DiskCollector, memory::MemoryCollector, network::NetworkCollector,
 };
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
-use std::env;
 use std::io;
-use std::net::{IpAddr, UdpSocket};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr, UdpSocket};
 use std::sync::mpsc::{Receiver, channel};
 use std::thread;
 use std::time::Duration;
-use tokio::sync::broadcast;
 
 mod alerting;
 mod metrics;
-mod stream;
 mod ui {
     pub mod cpu_widget;
     pub mod dashboard;
@@ -29,89 +27,14 @@ mod ui {
     pub mod theme;
 }
 
-const DEFAULT_WS_ADDR: &str = "0.0.0.0:9001";
-
-enum RunMode {
-    Ui,
-    Stream,
-}
-
-struct Collectors {
-    cpu: CpuCollector,
-    mem: MemoryCollector,
-    disk: DiskCollector,
-    net: NetworkCollector,
-}
-
-impl Collectors {
-    fn new() -> Self {
-        Self {
-            cpu: CpuCollector::new(),
-            mem: MemoryCollector::new(),
-            disk: DiskCollector::new(),
-            net: NetworkCollector::new(),
-        }
-    }
-
-    fn collect_snapshot(&mut self) -> MetricSnapshot {
-        let (total_cpu_usage, core_cpu_usage) = self.cpu.collect();
-
-        MetricSnapshot {
-            timestamp: Local::now(),
-            cpu_usage: total_cpu_usage,
-            core_cpu_usage,
-            total_memory: self.mem.collect_total(),
-            used_memory: self.mem.collect_used(),
-            disk_read: self.disk.collect_read(),
-            disk_write: self.disk.collect_write(),
-            net_rx: self.net.collect_rx(),
-            net_tx: self.net.collect_tx(),
-        }
-    }
-}
-
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mode = parse_mode(env::args().skip(1))?;
+    println!("Starting monitor-rs...");
 
-    match mode {
-        RunMode::Ui => run_ui_mode(),
-        RunMode::Stream => run_stream_mode(),
-    }
-}
-
-fn parse_mode<I>(args: I) -> Result<RunMode, Box<dyn std::error::Error>>
-where
-    I: Iterator<Item = String>,
-{
-    let mut mode = RunMode::Ui;
-
-    for arg in args {
-        match arg.as_str() {
-            "-u" => mode = RunMode::Ui,
-            "-s" => mode = RunMode::Stream,
-            "-h" | "--help" => {
-                println!("Usage: ./mymonitor [-u | -s]");
-                println!("  -u   Launch terminal UI mode (default)");
-                println!("  -s   Launch WebSocket JSON streaming mode");
-                std::process::exit(0);
-            }
-            _ => {
-                return Err(format!(
-                    "Unknown argument '{}'. Use -u for UI mode or -s for stream mode.",
-                    arg
-                )
-                .into());
-            }
-        }
-    }
-
-    Ok(mode)
-}
-
-fn run_ui_mode() -> Result<(), Box<dyn std::error::Error>> {
-    println!("Starting monitor-rs in UI mode...");
-
-    let mut collectors = Collectors::new();
+    // Initialize collectors
+    let mut cpu = CpuCollector::new();
+    let mut mem = MemoryCollector::new();
+    let mut disk = DiskCollector::new();
+    let mut net = NetworkCollector::new();
 
     let (ui_tx, ui_rx) = channel();
     let (alert_tx, alert_rx) = channel();
@@ -125,15 +48,26 @@ fn run_ui_mode() -> Result<(), Box<dyn std::error::Error>> {
 
     // Spawn the alert handling thread
     thread::spawn(move || {
-        let mut alert_evaluator = alerting::handler::AlertEvaluator::new();
+        let mut evaluator = AlertEvaluator::new();
         for snapshot in alert_rx {
-            alert_evaluator.evaluate_snapshot(&snapshot);
+            evaluator.evaluate_snapshot(&snapshot);
         }
     });
 
     // Metrics collection loop
     loop {
-        let snapshot = collectors.collect_snapshot();
+        let (cpu_usage, core_cpu_usage) = cpu.collect();
+        let snapshot = MetricSnapshot {
+            timestamp: Local::now(),
+            cpu_usage,
+            core_cpu_usage,
+            total_memory: mem.collect_total(),
+            used_memory: mem.collect_used(),
+            disk_read: disk.collect_read(),
+            disk_write: disk.collect_write(),
+            net_rx: net.collect_rx(),
+            net_tx: net.collect_tx(),
+        };
 
         if ui_tx.send(snapshot.clone()).is_err() {
             eprintln!("UI thread disconnected; shutting down monitor loop.");
@@ -151,47 +85,8 @@ fn run_ui_mode() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn run_stream_mode() -> Result<(), Box<dyn std::error::Error>> {
-    println!("Starting monitor-rs in stream mode...");
-
-    let ws_addr = env::var("MYMONITOR_WS_ADDR").unwrap_or_else(|_| DEFAULT_WS_ADDR.to_string());
-    let runtime = tokio::runtime::Builder::new_multi_thread()
-        .enable_all()
-        .build()?;
-
-    runtime.block_on(async move {
-        let (tx, _) = broadcast::channel::<MetricSnapshot>(32);
-
-        let server_tx = tx.clone();
-        let server_addr = ws_addr.clone();
-        tokio::spawn(async move {
-            if let Err(err) = stream::ws_server::run_server(&server_addr, server_tx).await {
-                eprintln!("WebSocket server error: {}", err);
-            }
-        });
-
-        let mut collectors = Collectors::new();
-        loop {
-            let snapshot = collectors.collect_snapshot();
-            let _ = tx.send(snapshot);
-            tokio::time::sleep(Duration::from_secs(1)).await;
-        }
-    })
-}
-
-fn resolve_local_ip() -> Option<String> {
-    let socket = UdpSocket::bind("0.0.0.0:0").ok()?;
-    socket.connect("8.8.8.8:80").ok()?;
-    let addr = socket.local_addr().ok()?;
-
-    match addr.ip() {
-        IpAddr::V4(ip) => Some(ip.to_string()),
-        IpAddr::V6(_) => None,
-    }
-}
-
 fn launch_ui(ui_rx: Receiver<MetricSnapshot>) -> Result<(), io::Error> {
-    let local_ip = resolve_local_ip().unwrap_or_else(|| "unknown-ip".to_string());
+    let local_ip = detect_local_ip();
 
     enable_raw_mode()?;
     let mut stdout = io::stdout();
@@ -222,4 +117,24 @@ fn launch_ui(ui_rx: Receiver<MetricSnapshot>) -> Result<(), io::Error> {
     terminal.show_cursor()?;
 
     Ok(())
+}
+
+fn detect_local_ip() -> String {
+    let bind_addr = SocketAddr::from((Ipv4Addr::UNSPECIFIED, 0));
+    let remote_addr = SocketAddr::from((Ipv4Addr::new(8, 8, 8, 8), 80));
+
+    let socket = match UdpSocket::bind(bind_addr) {
+        Ok(socket) => socket,
+        Err(_) => return "unknown".to_string(),
+    };
+
+    if socket.connect(remote_addr).is_err() {
+        return "unknown".to_string();
+    }
+
+    match socket.local_addr().map(|addr| addr.ip()) {
+        Ok(IpAddr::V4(ip)) => ip.to_string(),
+        Ok(IpAddr::V6(ip)) => ip.to_string(),
+        Err(_) => "unknown".to_string(),
+    }
 }
