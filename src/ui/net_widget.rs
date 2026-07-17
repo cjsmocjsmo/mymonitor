@@ -7,7 +7,7 @@ use ratatui::{
 
 pub fn render(f: &mut Frame, snapshot: &MetricSnapshot, area: Rect) {
     let text = format!(
-        "Net Rx: {} B/s | Tx: {} B/s",
+        "Net Rx: {} B/s\nTx: {} B/s",
         snapshot.net_rx, snapshot.net_tx
     );
     let paragraph =

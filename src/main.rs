@@ -54,9 +54,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Metrics collection loop
     loop {
+        let (total_cpu_usage, core_cpu_usage) = cpu.collect();
+
         let snapshot = MetricSnapshot {
             timestamp: Local::now(),
-            cpu_usage: cpu.collect(),
+            cpu_usage: total_cpu_usage,
+            core_cpu_usage,
             total_memory: mem.collect_total(),
             used_memory: mem.collect_used(),
             disk_read: disk.collect_read(),

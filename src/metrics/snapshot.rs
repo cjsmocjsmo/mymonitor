@@ -6,6 +6,7 @@ use serde::Serialize;
 pub struct MetricSnapshot {
     pub timestamp: DateTime<Local>,
     pub cpu_usage: f32,
+    pub core_cpu_usage: Vec<f32>,
     pub total_memory: u64,
     pub used_memory: u64,
     pub disk_read: u64,

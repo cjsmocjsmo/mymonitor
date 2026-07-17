@@ -10,8 +10,10 @@ impl CpuCollector {
         CpuCollector { sys }
     }
 
-    pub fn collect(&mut self) -> f32 {
+    pub fn collect(&mut self) -> (f32, Vec<f32>) {
         self.sys.refresh_cpu_all();
-        self.sys.global_cpu_usage()
+        let total = self.sys.global_cpu_usage();
+        let per_core = self.sys.cpus().iter().map(|cpu| cpu.cpu_usage()).collect();
+        (total, per_core)
     }
 }
