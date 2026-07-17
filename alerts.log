@@ -1,7 +1,3 @@
-[ALERT] High CPU Usage triggered at 2026-07-17 00:14:00. Threshold: 5
-[ALERT] High CPU Usage triggered at 2026-07-17 00:14:02. Threshold: 5
-[ALERT] High CPU Usage triggered at 2026-07-17 00:14:03. Threshold: 5
-[ALERT] High CPU Usage triggered at 2026-07-17 00:14:04. Threshold: 5
-[ALERT] High CPU Usage triggered at 2026-07-17 00:14:05. Threshold: 5
-[ALERT] High CPU Usage triggered at 2026-07-17 00:25:42. Threshold: 5
-[ALERT] High CPU Usage triggered at 2026-07-17 00:25:43. Threshold: 5
+[ALERT] High Memory Usage triggered at 2026-07-17 03:00:03. Threshold: 70.00. Current: 70.28
+[RECOVERY] High Memory Usage recovered at 2026-07-17 03:00:11. Current: 69.91. Recover Threshold: 70.00
+[ALERT] High Memory Usage triggered at 2026-07-17 03:00:13. Threshold: 70.00. Current: 70.29

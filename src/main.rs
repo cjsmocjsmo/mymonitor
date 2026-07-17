@@ -46,8 +46,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Spawn the alert handling thread
     thread::spawn(move || {
+        let mut alert_evaluator = alerting::handler::AlertEvaluator::new();
         for snapshot in alert_rx {
-            alerting::handler::evaluate_alerts(&snapshot);
+            alert_evaluator.evaluate_snapshot(&snapshot);
         }
     });
 
@@ -64,11 +65,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             net_tx: net.collect_tx(),
         };
 
-        ui_tx.send(snapshot.clone()).unwrap();
-        alert_tx.send(snapshot).unwrap();
+        if ui_tx.send(snapshot.clone()).is_err() {
+            eprintln!("UI thread disconnected; shutting down monitor loop.");
+            break;
+        }
+
+        if alert_tx.send(snapshot).is_err() {
+            eprintln!("Alert thread disconnected; shutting down monitor loop.");
+            break;
+        }
 
         thread::sleep(Duration::from_secs(1));
     }
+
+    Ok(())
 }
 
 fn launch_ui(ui_rx: Receiver<MetricSnapshot>) -> Result<(), io::Error> {
