@@ -1,0 +1,2 @@
+[ALERT] High CPU Usage triggered at 2026-07-17 04:33:37. Threshold: 85.00. Current: 92.49. Sustained Samples: 10
+[RECOVERY] High CPU Usage recovered at 2026-07-17 04:33:57. Current: 57.63. Recover Threshold: 75.00
