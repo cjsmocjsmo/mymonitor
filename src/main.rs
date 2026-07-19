@@ -9,13 +9,16 @@ use metrics::{
 };
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
+use std::env;
 use std::io;
 use std::sync::mpsc::{Receiver, channel};
 use std::thread;
 use std::time::Duration;
+use tokio::sync::broadcast;
 
 mod alerting;
 mod metrics;
+mod stream;
 mod ui {
     pub mod cpu_widget;
     pub mod dashboard;
@@ -25,8 +28,58 @@ mod ui {
     pub mod theme;
 }
 
+const WS_ADDR: &str = "0.0.0.0:9001";
+
+enum RunMode {
+    Ui,
+    Stream,
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    println!("Starting monitor-rs...");
+    let mode = match parse_mode(env::args().skip(1)) {
+        Ok(mode) => mode,
+        Err(message) => {
+            eprintln!("{}", message);
+            print_usage();
+            return Err("invalid arguments".into());
+        }
+    };
+
+    match mode {
+        RunMode::Ui => run_ui_mode(),
+        RunMode::Stream => run_stream_mode(),
+    }
+}
+
+fn parse_mode<I>(mut args: I) -> Result<RunMode, String>
+where
+    I: Iterator<Item = String>,
+{
+    match args.next() {
+        Some(flag) => {
+            if args.next().is_some() {
+                return Err("only one argument is supported".to_string());
+            }
+
+            match flag.as_str() {
+                "-u" => Ok(RunMode::Ui),
+                "-s" => Ok(RunMode::Stream),
+                "-h" | "--help" => Err("".to_string()),
+                _ => Err(format!("unknown argument: {}", flag)),
+            }
+        }
+        None => Err("missing required mode argument".to_string()),
+    }
+}
+
+fn print_usage() {
+    eprintln!("Usage: mymonitor <-u|-s>");
+    eprintln!("  -u    Run local UI only (no websocket streaming)");
+    eprintln!("  -s    Run websocket streaming server only on ws://{}", WS_ADDR);
+}
+
+fn run_ui_mode() -> Result<(), Box<dyn std::error::Error>> {
+    println!("Starting monitor-rs in UI mode...");
 
     // Initialize collectors
     let mut cpu = CpuCollector::new();
@@ -82,6 +135,49 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     Ok(())
+}
+
+fn run_stream_mode() -> Result<(), Box<dyn std::error::Error>> {
+    println!("Starting monitor-rs in server mode on ws://{}...", WS_ADDR);
+
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()?;
+
+    runtime.block_on(async move {
+        let mut cpu = CpuCollector::new();
+        let mut mem = MemoryCollector::new();
+        let mut disk = DiskCollector::new();
+        let mut net = NetworkCollector::new();
+
+        let (tx, _) = broadcast::channel(64);
+        let server_tx = tx.clone();
+
+        tokio::spawn(async move {
+            if let Err(err) = stream::ws_server::run_server(WS_ADDR, server_tx).await {
+                eprintln!("WebSocket server error: {}", err);
+            }
+        });
+
+        loop {
+            let (total_cpu_usage, core_cpu_usage) = cpu.collect();
+
+            let snapshot = MetricSnapshot {
+                timestamp: Local::now(),
+                cpu_usage: total_cpu_usage,
+                core_cpu_usage,
+                total_memory: mem.collect_total(),
+                used_memory: mem.collect_used(),
+                disk_read: disk.collect_read(),
+                disk_write: disk.collect_write(),
+                net_rx: net.collect_rx(),
+                net_tx: net.collect_tx(),
+            };
+
+            let _ = tx.send(snapshot);
+            tokio::time::sleep(Duration::from_secs(1)).await;
+        }
+    })
 }
 
 fn launch_ui(ui_rx: Receiver<MetricSnapshot>) -> Result<(), io::Error> {
