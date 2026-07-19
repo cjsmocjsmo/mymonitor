@@ -31,7 +31,7 @@ mod ui {
     pub mod theme;
 }
 
-const WS_ADDR: &str = "0.0.0.0:9001";
+const WS_ADDR: &str = "10.0.4.67:9001";
 const METRIC_INTERVAL_SECS: u64 = 2;
 
 enum RunMode {
