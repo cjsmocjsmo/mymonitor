@@ -5,7 +5,10 @@ use tokio::net::TcpListener;
 use tokio::sync::broadcast;
 use tokio_tungstenite::{accept_async, tungstenite::Message};
 
-pub async fn run_server(addr: &str, tx: broadcast::Sender<MetricSnapshot>) -> Result<(), Box<dyn Error>> {
+pub async fn run_server(
+    addr: &str,
+    tx: broadcast::Sender<MetricSnapshot>,
+) -> Result<(), Box<dyn Error>> {
     let listener = TcpListener::bind(addr).await?;
     println!("WebSocket server listening on ws://{}", addr);
 
@@ -39,18 +42,16 @@ pub async fn run_server(addr: &str, tx: broadcast::Sender<MetricSnapshot>) -> Re
 
             loop {
                 match rx.recv().await {
-                    Ok(snapshot) => {
-                        match serde_json::to_string(&snapshot) {
-                            Ok(payload) => {
-                                if ws_write.send(Message::Text(payload)).await.is_err() {
-                                    break;
-                                }
-                            }
-                            Err(err) => {
-                                eprintln!("Failed to serialize snapshot for {}: {}", peer, err);
+                    Ok(snapshot) => match serde_json::to_string(&snapshot) {
+                        Ok(payload) => {
+                            if ws_write.send(Message::Text(payload.into())).await.is_err() {
+                                break;
                             }
                         }
-                    }
+                        Err(err) => {
+                            eprintln!("Failed to serialize snapshot for {}: {}", peer, err);
+                        }
+                    },
                     Err(broadcast::error::RecvError::Lagged(_)) => {
                         continue;
                     }
