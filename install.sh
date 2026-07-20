@@ -1,7 +1,7 @@
 
 arch=$(uname -m)
 if [ "$arch" = "armv7l" ]; then
-    cp -pvr ./mymonitor-rpi3b /usr/local/bin/mymonitor-rpi3
+    cp -pvr ./mymonitor-rpi3b /usr/local/bin/mymonitor-rpi3b
     cp -pvr ./mymonitorrpi3.service /etc/systemd/system/mymonitorrpi3.service
     systemctl daemon-reload
     systemctl enable mymonitorrpi3.service

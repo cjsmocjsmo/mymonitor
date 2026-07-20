@@ -4,7 +4,7 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/mymonitor-rpi3 -s
+ExecStart=/usr/local/bin/mymonitor-rpi3b -s
 Restart=on-failure
 RestartSec=5
 
