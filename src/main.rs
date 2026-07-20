@@ -210,6 +210,10 @@ fn detect_device_id() -> String {
 }
 
 fn detect_hostname() -> String {
+    if let Some(hostname) = get_system_hostname() {
+        return hostname;
+    }
+
     if let Ok(hostname) = fs::read_to_string("/etc/hostname") {
         let trimmed = hostname.trim();
         if !trimmed.is_empty() {
@@ -225,6 +229,27 @@ fn detect_hostname() -> String {
     }
 
     "unknown-host".to_string()
+}
+
+fn get_system_hostname() -> Option<String> {
+    let mut buffer = [0u8; 256];
+
+    let result = unsafe { libc::gethostname(buffer.as_mut_ptr().cast(), buffer.len()) };
+    if result != 0 {
+        return None;
+    }
+
+    let hostname_len = buffer
+        .iter()
+        .position(|byte| *byte == 0)
+        .unwrap_or(buffer.len());
+
+    let hostname = std::str::from_utf8(&buffer[..hostname_len]).ok()?.trim();
+    if hostname.is_empty() {
+        None
+    } else {
+        Some(hostname.to_string())
+    }
 }
 
 fn launch_ui(ui_rx: Receiver<MetricSnapshot>) -> Result<(), io::Error> {
