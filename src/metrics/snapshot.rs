@@ -5,6 +5,7 @@ use serde::Serialize;
 #[derive(Serialize, Debug, Clone)]
 pub struct MetricSnapshot {
     pub device_id: String,
+    pub hostname: String,
     pub timestamp: DateTime<Local>,
     pub cpu_usage: f32,
     pub core_cpu_usage: Vec<f32>,

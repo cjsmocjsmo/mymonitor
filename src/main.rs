@@ -91,6 +91,7 @@ fn run_ui_mode() -> Result<(), Box<dyn std::error::Error>> {
     let mut disk = DiskCollector::new();
     let mut net = NetworkCollector::new();
     let device_id = detect_device_id();
+    let hostname = detect_hostname();
 
     let (ui_tx, ui_rx) = channel();
     let (alert_tx, alert_rx) = channel();
@@ -115,6 +116,7 @@ fn run_ui_mode() -> Result<(), Box<dyn std::error::Error>> {
         let (cpu_usage, core_cpu_usage) = cpu.collect();
         let snapshot = MetricSnapshot {
             device_id: device_id.clone(),
+            hostname: hostname.clone(),
             timestamp: Local::now(),
             cpu_usage,
             core_cpu_usage,
@@ -155,6 +157,7 @@ fn run_stream_mode() -> Result<(), Box<dyn std::error::Error>> {
         let mut disk = DiskCollector::new();
         let mut net = NetworkCollector::new();
         let device_id = detect_device_id();
+        let hostname = detect_hostname();
 
         let (tx, _) = broadcast::channel(64);
         let server_tx = tx.clone();
@@ -170,6 +173,7 @@ fn run_stream_mode() -> Result<(), Box<dyn std::error::Error>> {
 
             let snapshot = MetricSnapshot {
                 device_id: device_id.clone(),
+                hostname: hostname.clone(),
                 timestamp: Local::now(),
                 cpu_usage: total_cpu_usage,
                 core_cpu_usage,
@@ -203,6 +207,24 @@ fn detect_device_id() -> String {
     }
 
     "unknown-device".to_string()
+}
+
+fn detect_hostname() -> String {
+    if let Ok(hostname) = fs::read_to_string("/etc/hostname") {
+        let trimmed = hostname.trim();
+        if !trimmed.is_empty() {
+            return trimmed.to_string();
+        }
+    }
+
+    if let Ok(hostname) = std::env::var("HOSTNAME") {
+        let trimmed = hostname.trim();
+        if !trimmed.is_empty() {
+            return trimmed.to_string();
+        }
+    }
+
+    "unknown-host".to_string()
 }
 
 fn launch_ui(ui_rx: Receiver<MetricSnapshot>) -> Result<(), io::Error> {
