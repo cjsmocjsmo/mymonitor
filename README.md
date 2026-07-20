@@ -5,6 +5,8 @@ Lightweight Rust system monitor with two runtime modes:
 - `-u`: local terminal UI dashboard (no websocket streaming)
 - `-s`: websocket streaming server (no UI)
 
+To be used in conjunction with monitorhub
+
 ## Debian Packages
 
 Install these packages on Debian/Ubuntu before building:
@@ -43,12 +45,27 @@ From the project root:
 
 ```bash
 cargo build --release
+cargo build --release --target armv7-unknown-linux-gnueabihf
 ```
 
 Binary path:
 
 ```text
 target/release/mymonitor
+target/armv7-unknown-linux-gnueabihf/release/mymonitor
+```
+
+## Install
+
+Since this is primarily for the raspberry pi series
+I cross-compile the 32 bit binary on a raspberry pi 4
+
+The script will detect which arch you are on and intall 
+the correct binaries and the correct service file, and use 
+systemctl to enable and start the service.
+
+```bash
+sh ./install.sh
 ```
 
 ## Run
@@ -70,13 +87,6 @@ Starts websocket server only (no UI). Metrics are sent once per second as JSON.
 ```bash
 ./target/release/mymonitor -s
 ```
-
-Server bind address:
-
-```text
-ws://0.0.0.0:9001
-```
-
 For remote clients, connect using the machine IP, for example:
 
 ```text
@@ -85,28 +95,8 @@ ws://192.168.1.50:9001
 
 ## Connect With wscat
 
-Install Node.js + npm if needed:
-
-```bash
-sudo apt install -y nodejs npm
-```
-
-Install wscat:
-
-```bash
-npm install -g wscat
-```
-
-Connect to the running server:
-
 ```bash
 wscat -c ws://127.0.0.1:9001
-```
-
-Or from another machine on the same network:
-
-```bash
-wscat -c ws://192.168.1.50:9001
 ```
 
 You should see JSON metric snapshots streaming continuously.

@@ -14,7 +14,6 @@ ARM32=./target/armv7-unknown-linux-gnueabihf/release/mymonitor
 if [ -f "$ARM64" ]; then
     echo "Copying ARM64 binary to current directory..."
     cp "$ARM64" ./mymonitor-rpi4
-    cp "$ARM64" /usr/local/bin/mymonitor-rpi4
 else
     echo "ARM64 binary not found. Please ensure it was built successfully."
 fi
@@ -22,7 +21,6 @@ fi
 if [ -f "$ARM32" ]; then
     echo "Copying ARM32 binary to current directory..."
     cp "$ARM32" ./mymonitor-rpi3b
-    cp "$ARM32" /usr/local/bin/mymonitor-rpi3b
 else
     echo "ARM32 binary not found. Please ensure it was built successfully."
 fi
