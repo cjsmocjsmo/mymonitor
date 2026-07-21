@@ -1,7 +1,8 @@
-use sysinfo::System;
+use sysinfo::{Disks, System};
 
 pub struct DiskCollector {
     sys: System,
+    disks: Disks,
     prev_read: u64,
     prev_write: u64,
 }
@@ -10,10 +11,12 @@ impl DiskCollector {
     pub fn new() -> Self {
         let mut sys = System::new_all(); // ensures process list is populated
         sys.refresh_all();
+        let disks = Disks::new_with_refreshed_list();
 
         let (read, write) = Self::aggregate(&sys);
         DiskCollector {
             sys,
+            disks,
             prev_read: read,
             prev_write: write,
         }
@@ -44,5 +47,25 @@ impl DiskCollector {
         let delta = write.saturating_sub(self.prev_write);
         self.prev_write = write;
         delta
+    }
+
+    pub fn collect_usage_pct(&mut self) -> f32 {
+        self.disks.refresh(true);
+
+        let mut total_space = 0u64;
+        let mut used_space = 0u64;
+
+        for disk in self.disks.list() {
+            let total = disk.total_space();
+            let available = disk.available_space();
+            total_space = total_space.saturating_add(total);
+            used_space = used_space.saturating_add(total.saturating_sub(available));
+        }
+
+        if total_space == 0 {
+            return 0.0;
+        }
+
+        (used_space as f32 / total_space as f32) * 100.0
     }
 }

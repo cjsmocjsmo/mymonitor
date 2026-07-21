@@ -13,6 +13,7 @@ pub struct MetricSnapshot {
     pub used_memory: u64,
     pub disk_read: u64,
     pub disk_write: u64,
+    pub disk_usage_pct: f32,
     pub net_rx: u64,
     pub net_tx: u64,
 }

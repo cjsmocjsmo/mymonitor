@@ -26,6 +26,7 @@ mod ui {
     pub mod cpu_widget;
     pub mod dashboard;
     pub mod disk_widget;
+    pub mod disk_usage_widget;
     pub mod memory_widget;
     pub mod net_widget;
     pub mod theme;
@@ -124,6 +125,7 @@ fn run_ui_mode() -> Result<(), Box<dyn std::error::Error>> {
             used_memory: mem.collect_used(),
             disk_read: disk.collect_read(),
             disk_write: disk.collect_write(),
+            disk_usage_pct: disk.collect_usage_pct(),
             net_rx: net.collect_rx(),
             net_tx: net.collect_tx(),
         };
@@ -181,6 +183,7 @@ fn run_stream_mode() -> Result<(), Box<dyn std::error::Error>> {
                 used_memory: mem.collect_used(),
                 disk_read: disk.collect_read(),
                 disk_write: disk.collect_write(),
+                disk_usage_pct: disk.collect_usage_pct(),
                 net_rx: net.collect_rx(),
                 net_tx: net.collect_tx(),
             };

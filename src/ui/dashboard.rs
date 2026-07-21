@@ -4,7 +4,7 @@ use ratatui::{
     widgets::Paragraph,
 };
 
-use super::{cpu_widget, disk_widget, memory_widget, net_widget};
+use super::{cpu_widget, disk_usage_widget, disk_widget, memory_widget, net_widget};
 use crate::metrics::snapshot::MetricSnapshot;
 
 pub fn render(f: &mut Frame, snapshot: &MetricSnapshot, local_ip: &str) {
@@ -19,23 +19,25 @@ pub fn render(f: &mut Frame, snapshot: &MetricSnapshot, local_ip: &str) {
         .direction(Direction::Vertical)
         .margin(1)
         .constraints([
-            Constraint::Length(1),
+            Constraint::Length(3),
             Constraint::Length(cpu_rows),
             Constraint::Length(3),
             Constraint::Length(4),
+            Constraint::Length(3),
             Constraint::Length(4),
             Constraint::Min(0),
         ])
         .split(f.area());
 
     let host_line = Paragraph::new(format!(
-        "Local IP: {local_ip} | Device ID: {}",
-        short_device_id
+        "Local IP: {local_ip}\nDevice ID: {}\nHostname: {}",
+        short_device_id, snapshot.hostname
     ));
     f.render_widget(host_line, layout[0]);
 
     cpu_widget::render(f, snapshot, layout[1]);
     memory_widget::render(f, snapshot, layout[2]);
     disk_widget::render(f, snapshot, layout[3]);
-    net_widget::render(f, snapshot, layout[4]);
+    disk_usage_widget::render(f, snapshot, layout[4]);
+    net_widget::render(f, snapshot, layout[5]);
 }
