@@ -8,6 +8,7 @@ pub struct MetricSnapshot {
     pub hostname: String,
     pub timestamp: DateTime<Local>,
     pub cpu_usage: f32,
+    pub cpu_temp: Option<f32>,
     pub core_cpu_usage: Vec<f32>,
     pub total_memory: u64,
     pub used_memory: u64,

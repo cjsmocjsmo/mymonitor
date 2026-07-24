@@ -12,7 +12,11 @@ pub fn render(f: &mut Frame, snapshot: &MetricSnapshot, area: Rect) {
         return;
     }
 
-    let panel = Block::default().title("CPU (Total + Cores)").borders(Borders::ALL);
+    let panel_title = match snapshot.cpu_temp {
+        Some(temp) => format!("CPU (Total + Cores) | Temp: {:.1}C", temp),
+        None => "CPU (Total + Cores) | Temp: N/A".to_string(),
+    };
+    let panel = Block::default().title(panel_title).borders(Borders::ALL);
     let inner = panel.inner(area);
     f.render_widget(panel, area);
 

@@ -6,7 +6,8 @@ use crossterm::terminal::{
 use alerting::handler::AlertEvaluator;
 use metrics::snapshot::MetricSnapshot;
 use metrics::{
-    cpu::CpuCollector, disk::DiskCollector, memory::MemoryCollector, network::NetworkCollector,
+    cpu::CpuCollector, cpu_temp::CpuTempCollector, disk::DiskCollector, memory::MemoryCollector,
+    network::NetworkCollector,
 };
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
@@ -88,6 +89,7 @@ fn run_ui_mode() -> Result<(), Box<dyn std::error::Error>> {
 
     // Initialize collectors
     let mut cpu = CpuCollector::new();
+    let mut cpu_temp = CpuTempCollector::new();
     let mut mem = MemoryCollector::new();
     let mut disk = DiskCollector::new();
     let mut net = NetworkCollector::new();
@@ -120,6 +122,7 @@ fn run_ui_mode() -> Result<(), Box<dyn std::error::Error>> {
             hostname: hostname.clone(),
             timestamp: Local::now(),
             cpu_usage,
+            cpu_temp: cpu_temp.collect(),
             core_cpu_usage,
             total_memory: mem.collect_total(),
             used_memory: mem.collect_used(),
@@ -155,6 +158,7 @@ fn run_stream_mode() -> Result<(), Box<dyn std::error::Error>> {
 
     runtime.block_on(async move {
         let mut cpu = CpuCollector::new();
+        let mut cpu_temp = CpuTempCollector::new();
         let mut mem = MemoryCollector::new();
         let mut disk = DiskCollector::new();
         let mut net = NetworkCollector::new();
@@ -178,6 +182,7 @@ fn run_stream_mode() -> Result<(), Box<dyn std::error::Error>> {
                 hostname: hostname.clone(),
                 timestamp: Local::now(),
                 cpu_usage: total_cpu_usage,
+                cpu_temp: cpu_temp.collect(),
                 core_cpu_usage,
                 total_memory: mem.collect_total(),
                 used_memory: mem.collect_used(),
